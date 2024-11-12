@@ -26,7 +26,8 @@ const StreamPage = () => {
 
   const startStream = async () => {
     try {
-      const backendUrl = process.env.BACKEND_URL;
+      const backendUrl = process.env.REACT_APP_BACKEND_API_URL;
+      console.log("backendUrl", backendUrl);
       const response = await axios.post(`${backendUrl}/api/streams/create`, {
         streamTitle,
       });

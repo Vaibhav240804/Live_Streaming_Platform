@@ -9,7 +9,8 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStreams = async () => {
       try {
-        const backendUrl = process.env.BACKEND_API_URL;
+        const backendUrl = process.env.REACT_APP_BACKEND_API_URL;
+        console.log("backendUrl", backendUrl);
         const response = await axios.get(`${backendUrl}/api/streams/all`);
         setStreams(response.data);
       } catch (error) {

@@ -1,35 +1,65 @@
-const AWS = require("aws-sdk");
+const {
+  IvsClient
+  CreateChannelCommand,
+  CreateStreamKeyCommand,
+} = require("@aws-sdk/client-ivs");
 const Stream = require("../models/Stream");
 
-AWS.config.update({
+const ivsClient = new IVSClient({
   region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
 });
 
-const ivs = new AWS.IVS({ apiVersion: "2020-07-14" });
-
 exports.createStream = async (req, res) => {
+  const { streamTitle } = req.body;
+
+  if (!streamTitle) {
+    return res.status(400).json({ error: "Stream title is required." });
+  }
+
   try {
-    const { streamTitle } = req.body;
-
-    const params = {
+    // Step 1: Create the channel with the provided title
+    const createChannelCommand = new CreateChannelCommand({
       name: streamTitle,
-      type: "BASIC",
-    };
+      latencyMode: "LOW", // or 'NORMAL'
+      type: "BASIC", // Set to 'BASIC' or 'STANDARD' as needed
+    });
+    const channelResponse = await ivsClient.send(createChannelCommand);
 
-    const stream = await ivs.createChannel(params).promise();
-    const { streamKey, playbackUrl, ingestEndpoint } = stream.channel;
+    const channelArn = channelResponse.channel.arn;
+    const playbackUrl = channelResponse.channel.playbackUrl;
+    const ingestEndpoint = channelResponse.channel.ingestEndpoint;
 
-    const newStream = new Stream({ title: streamTitle, playbackUrl });
+    // Step 2: Create the stream key for the channel
+    const createStreamKeyCommand = new CreateStreamKeyCommand({
+      channelArn,
+    });
+    const streamKeyResponse = await ivsClient.send(createStreamKeyCommand);
+    const streamKey = streamKeyResponse.streamKey.value;
+
+    console.log("Stream created:", streamKey, playbackUrl, ingestEndpoint);
+
+    // Step 3: Save the stream details in the database
+    const newStream = new Stream({
+      title: streamTitle,
+      playbackUrl,
+    });
     await newStream.save();
 
-    res
-      .status(201)
-      .json({ streamKey: streamKey.value, playbackUrl, ingestEndpoint });
+    res.status(201).json({
+      message: "Stream created successfully.",
+      streamKey,
+      playbackUrl,
+      ingestEndpoint,
+    });
   } catch (error) {
     console.error("Error creating stream:", error);
-    res.status(500).json({ error: "Failed to create stream" });
+    res
+      .status(500)
+      .json({ error: "Failed to create stream", details: error.message });
   }
 };
 
