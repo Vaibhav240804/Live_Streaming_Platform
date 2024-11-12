@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Input, Button, message } from "antd";
-import { IVSBroadcastClient } from "@aws-sdk/client-ivs";
 
 const StreamPage = () => {
   const [streamTitle, setStreamTitle] = useState("");
@@ -9,6 +8,21 @@ const StreamPage = () => {
   const [playbackUrl, setPlaybackUrl] = useState(null);
   const [broadcasting, setBroadcasting] = useState(false);
   const [ingestep, setIngestep] = useState(null);
+
+  let IVSBroadcastClient = null;
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src =
+      "https://web-broadcast.live-video.net/1.3.3/amazon-ivs-web-broadcast.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.IVSBroadcastClient) {
+        IVSBroadcastClient = window.IVSBroadcastClient;
+      }
+    };
+    document.body.appendChild(script);
+  }, []);
 
   const startStream = async () => {
     try {

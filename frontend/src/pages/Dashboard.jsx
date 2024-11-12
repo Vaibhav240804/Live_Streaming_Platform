@@ -9,7 +9,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStreams = async () => {
       try {
-        const backendUrl = process.env.BACKEND_URL;
+        const backendUrl = process.env.BACKEND_API_URL;
         const response = await axios.get(`${backendUrl}/api/streams/all`);
         setStreams(response.data);
       } catch (error) {
@@ -27,7 +27,7 @@ const Dashboard = () => {
         dataSource={streams}
         renderItem={(stream) => (
           <List.Item>
-            <Link to={`/watch/${stream._id}`}>
+            <Link to={`/watch/${stream.playbackUrl}`}>
               <Button type="primary">Watch</Button>
             </Link>
           </List.Item>
