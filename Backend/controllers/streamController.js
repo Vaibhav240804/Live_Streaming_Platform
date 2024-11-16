@@ -1,15 +1,11 @@
-const {
-  IvsClient
-  CreateChannelCommand,
-  CreateStreamKeyCommand,
-} = require("@aws-sdk/client-ivs");
+const { IvsClient, CreateChannelCommand } = require("@aws-sdk/client-ivs");
 const Stream = require("../models/Stream");
 
-const ivsClient = new IVSClient({
+const ivsClient = new IvsClient({
   region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -24,25 +20,19 @@ exports.createStream = async (req, res) => {
     // Step 1: Create the channel with the provided title
     const createChannelCommand = new CreateChannelCommand({
       name: streamTitle,
-      latencyMode: "LOW", // or 'NORMAL'
-      type: "BASIC", // Set to 'BASIC' or 'STANDARD' as needed
+      latencyMode: "LOW",
+      type: "BASIC",
     });
-    const channelResponse = await ivsClient.send(createChannelCommand);
+    const response = await ivsClient.send(createChannelCommand);
 
-    const channelArn = channelResponse.channel.arn;
-    const playbackUrl = channelResponse.channel.playbackUrl;
-    const ingestEndpoint = channelResponse.channel.ingestEndpoint;
-
-    // Step 2: Create the stream key for the channel
-    const createStreamKeyCommand = new CreateStreamKeyCommand({
-      channelArn,
-    });
-    const streamKeyResponse = await ivsClient.send(createStreamKeyCommand);
-    const streamKey = streamKeyResponse.streamKey.value;
+    const channelArn = response.channel.arn;
+    const playbackUrl = response.channel.playbackUrl;
+    const ingestEndpoint = response.channel.ingestEndpoint;
+    const streamKey = response.streamKey.value;
 
     console.log("Stream created:", streamKey, playbackUrl, ingestEndpoint);
 
-    // Step 3: Save the stream details in the database
+    // Step 2: Save the stream details in the database
     const newStream = new Stream({
       title: streamTitle,
       playbackUrl,
@@ -70,5 +60,20 @@ exports.getStreams = async (req, res) => {
   } catch (error) {
     console.error("Error retrieving streams:", error);
     res.status(500).json({ error: "Failed to retrieve streams" });
+  }
+};
+
+exports.getStream = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const stream = await Stream.findById(id);
+    if (!stream) {
+      return res.status(404).json({ error: "Stream not found." });
+    }
+
+    res.json({ playbackUrl: stream.playbackUrl });
+  } catch (error) {
+    console.error("Error retrieving stream:", error);
+    res.status(500).json({ error: "Failed to retrieve stream" });
   }
 };

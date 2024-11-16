@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Input, Button, message } from "antd";
+import { useRef } from "react";
+import { Typography } from "antd";
+import { Row, Col, Card, Space } from "antd";
+const { Text, Title } = Typography;
 
 const StreamPage = () => {
   const [streamTitle, setStreamTitle] = useState("");
@@ -9,7 +13,7 @@ const StreamPage = () => {
   const [broadcasting, setBroadcasting] = useState(false);
   const [ingestep, setIngestep] = useState(null);
 
-  let IVSBroadcastClient = null;
+  const IVSBroadcastClientRef = useRef(null);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -18,7 +22,7 @@ const StreamPage = () => {
     script.async = true;
     script.onload = () => {
       if (window.IVSBroadcastClient) {
-        IVSBroadcastClient = window.IVSBroadcastClient;
+        IVSBroadcastClientRef.current = window.IVSBroadcastClient;
       }
     };
     document.body.appendChild(script);
@@ -44,29 +48,29 @@ const StreamPage = () => {
     }
   };
 
-  let broadcastClient = null;
+  const broadcastClientRef = useRef(null);
 
   const handleBroadcastToggle = () => {
     if (!broadcasting) {
       if (streamKey && ingestep) {
-        broadcastClient = IVSBroadcastClient.create({
-          streamConfig: IVSBroadcastClient.BASIC_FULL_HD_LANDSCAPE,
+        broadcastClientRef.current = IVSBroadcastClientRef.current.create({
+          streamConfig: IVSBroadcastClientRef.current.BASIC_FULL_HD_LANDSCAPE,
           ingestEndpoint: ingestep,
         });
 
         const previewEl = document.getElementById("preview");
-        broadcastClient.attachPreview(previewEl);
+        broadcastClientRef.current.attachPreview(previewEl);
 
         navigator.mediaDevices
           .getUserMedia({ video: true, audio: true })
           .then((stream) => {
-            broadcastClient.addVideoInputDevice(stream, "camera1", {
+            broadcastClientRef.current.addVideoInputDevice(stream, "camera1", {
               index: 0,
             });
-            broadcastClient.addAudioInputDevice(stream, "mic1");
+            broadcastClientRef.current.addAudioInputDevice(stream, "mic1");
           });
 
-        broadcastClient
+        broadcastClientRef.current
           .startBroadcast(streamKey)
           .then(() => {
             setBroadcasting(true);
@@ -79,31 +83,51 @@ const StreamPage = () => {
           });
       }
     } else {
-      broadcastClient.stopBroadcast();
+      broadcastClientRef.current.stopBroadcast();
       setBroadcasting(false);
       message.info("Broadcast ended.");
     }
   };
 
   return (
-    <div>
-      <h1>Start Streaming</h1>
-      <Input
-        placeholder="Enter stream title"
-        value={streamTitle}
-        onChange={(e) => setStreamTitle(e.target.value)}
-      />
-      <Button onClick={startStream}>Start Streaming Setup</Button>
+    <Row justify="center" style={{ padding: "20px" }}>
+      <Col xs={24} sm={20} md={16} lg={12}>
+        <Card>
+          <Title level={2}>Start Streaming</Title>
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <div>
+              <h1>Start Streaming</h1>
+              <Input
+                placeholder="Enter stream title"
+                value={streamTitle}
+                onChange={(e) => setStreamTitle(e.target.value)}
+              />
+              <Button onClick={startStream}>Start Streaming Setup</Button>
 
-      {streamKey && <p>Stream Key: {streamKey}</p>}
-      {playbackUrl && <p>Playback URL: {playbackUrl}</p>}
+              {streamKey && (
+                <Text strong>
+                  stream Key: <Text code>{streamKey}</Text>
+                </Text>
+              )}
+              {playbackUrl && (
+                <Text strong>
+                  Playback URL: <Text code>{playbackUrl}</Text>
+                </Text>
+              )}
 
-      <canvas id="preview" style={{ width: "800px", height: "450px" }}></canvas>
+              <canvas
+                id="preview"
+                style={{ width: "800px", height: "450px" }}
+              ></canvas>
 
-      <Button type="primary" onClick={handleBroadcastToggle}>
-        {broadcasting ? "Stop Broadcasting" : "Start Broadcasting"}
-      </Button>
-    </div>
+              <Button type="primary" onClick={handleBroadcastToggle}>
+                {broadcasting ? "Stop Broadcasting" : "Start Broadcasting"}
+              </Button>
+            </div>
+          </Space>
+        </Card>
+      </Col>
+    </Row>
   );
 };
 
